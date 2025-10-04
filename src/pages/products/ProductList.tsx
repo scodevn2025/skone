@@ -1,63 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Edit, Trash2, Eye, Star } from 'lucide-react';
 import type { Page } from '../../App';
+import { supabase } from '../../lib/supabaseClient';
+
+interface Product {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  stock: number;
+  status: 'active' | 'out_of_stock' | 'hidden';
+  image: string;
+  rating: number;
+  sales: number;
+}
 
 interface ProductListProps {
   onNavigate: (page: Page) => void;
 }
 
 const ProductList: React.FC<ProductListProps> = ({ onNavigate }) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const products = [
-    {
-      id: 1,
-      name: 'iPhone 15 Pro Max',
-      category: 'Điện thoại',
-      price: '29,990,000',
-      stock: 45,
-      status: 'active',
-      image: 'https://images.pexels.com/photos/788946/pexels-photo-788946.jpeg?auto=compress&cs=tinysrgb&w=100',
-      rating: 4.8,
-      sales: 156
-    },
-    {
-      id: 2,
-      name: 'MacBook Pro M3',
-      category: 'Laptop',
-      price: '52,990,000',
-      stock: 12,
-      status: 'active',
-      image: 'https://images.pexels.com/photos/18105/pexels-photo.jpg?auto=compress&cs=tinysrgb&w=100',
-      rating: 4.9,
-      sales: 89
-    },
-    {
-      id: 3,
-      name: 'AirPods Pro 2',
-      category: 'Phụ kiện',
-      price: '6,290,000',
-      stock: 0,
-      status: 'out_of_stock',
-      image: 'https://images.pexels.com/photos/3394650/pexels-photo-3394650.jpeg?auto=compress&cs=tinysrgb&w=100',
-      rating: 4.7,
-      sales: 234
-    },
-    {
-      id: 4,
-      name: 'iPad Air M2',
-      category: 'Tablet',
-      price: '16,990,000',
-      stock: 28,
-      status: 'active',
-      image: 'https://images.pexels.com/photos/1334597/pexels-photo-1334597.jpeg?auto=compress&cs=tinysrgb&w=100',
-      rating: 4.6,
-      sales: 67
-    }
-  ];
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase.from('products').select('*');
 
-  const categories = ['all', 'Điện thoại', 'Laptop', 'Tablet', 'Phụ kiện'];
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          setProducts(data);
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -129,95 +121,105 @@ const ProductList: React.FC<ProductListProps> = ({ onNavigate }) => {
 
       {/* Products Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-              <tr>
-                <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Sản phẩm</th>
-                <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Danh mục</th>
-                <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Giá</th>
-                <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Kho</th>
-                <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Đánh giá</th>
-                <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Trạng thái</th>
-                <th className="text-right py-4 px-6 font-medium text-gray-900 dark:text-white">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredProducts.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="py-4 px-6">
-                    <div className="flex items-center space-x-4">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{product.name}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{product.sales} đã bán</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 text-gray-900 dark:text-white">{product.category}</td>
-                  <td className="py-4 px-6 text-gray-900 dark:text-white font-medium">₫{product.price}</td>
-                  <td className="py-4 px-6">
-                    <span className={`font-medium ${product.stock === 0 ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
-                      {product.stock}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center space-x-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span className="text-gray-900 dark:text-white">{product.rating}</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6">
-                    {getStatusBadge(product.status, product.stock)}
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center justify-end space-x-2">
-                      <button className="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onNavigate('products/edit')}
-                        className="p-1 text-gray-600 dark:text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button className="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Hiển thị 1-{filteredProducts.length} trong số {products.length} sản phẩm
-            </p>
-            <div className="flex items-center space-x-2">
-              <button className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
-                Trước
-              </button>
-              <button className="px-3 py-1 bg-blue-600 text-white rounded text-sm">
-                1
-              </button>
-              <button className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
-                2
-              </button>
-              <button className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
-                Sau
-              </button>
+        {loading ? (
+          <div className="p-6 text-center text-gray-600 dark:text-gray-400">Đang tải sản phẩm...</div>
+        ) : error ? (
+          <div className="p-6 text-center text-red-600 dark:text-red-400">Lỗi: {error}</div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                  <tr>
+                    <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Sản phẩm</th>
+                    <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Danh mục</th>
+                    <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Giá</th>
+                    <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Kho</th>
+                    <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Đánh giá</th>
+                    <th className="text-left py-4 px-6 font-medium text-gray-900 dark:text-white">Trạng thái</th>
+                    <th className="text-right py-4 px-6 font-medium text-gray-900 dark:text-white">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredProducts.map((product) => (
+                    <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="py-4 px-6">
+                        <div className="flex items-center space-x-4">
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-12 h-12 rounded-lg object-cover"
+                          />
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">{product.name}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{product.sales} đã bán</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-gray-900 dark:text-white">{product.category}</td>
+                      <td className="py-4 px-6 text-gray-900 dark:text-white font-medium">
+                        ₫{product.price.toLocaleString('vi-VN')}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className={`font-medium ${product.stock === 0 ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
+                          {product.stock}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center space-x-1">
+                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                          <span className="text-gray-900 dark:text-white">{product.rating}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        {getStatusBadge(product.status, product.stock)}
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button className="p-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded">
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onNavigate('products/edit')}
+                            className="p-1 text-gray-600 dark:text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button className="p-1 text-gray-600 dark:text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
-        </div>
+
+            {/* Pagination */}
+            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Hiển thị 1-{filteredProducts.length} trong số {products.length} sản phẩm
+                </p>
+                <div className="flex items-center space-x-2">
+                  <button className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+                    Trước
+                  </button>
+                  <button className="px-3 py-1 bg-blue-600 text-white rounded text-sm">
+                    1
+                  </button>
+                  <button className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+                    2
+                  </button>
+                  <button className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+                    Sau
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
